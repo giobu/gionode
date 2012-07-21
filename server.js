@@ -1,40 +1,38 @@
-var http = require('http'),
-    faye = require('faye'),
-    jQuery = require('jquery');
+var io = require('socket.io').listen(3000), 
+request = require('request');
+io.set('log level', 2);  
+//
+jDev = {status: "Nada"};
+function getJdev(){
+	request('http://tvconf.juicedev.me/tv/todo.json', function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			jDev.status = JSON.parse(body);
+		}
+	});
+	setTimeout(function(){ getJdev()}, 120000);
+}
+getJdev()
+//
 
-var bayeux = new faye.NodeAdapter({mount: '/faye', timeout: 45});
-
-// Handle non-Bayeux requests
-var server = http.createServer(function(request, response) {
-  response.writeHead(200, {'Content-Type': 'text/plain'});
-  response.write('Hello, non-Bayeux request');
-  response.end();
+io.sockets.on('connection', function (socket) {
+	bienvenida(socket);
+	c++;
+	conectado();
+	socket.on('disconnect', function () {
+    	c--;
+    	conectado();
+  	});
 });
 
-//
-jDev = "Nada"
-setInterval(function(){
-	jQuery.get("http://tvconf.juicedev.me/tv/todo.json", function(data){
-		jDev = data;
-	});
-}, 120000);
-//
-function bienvenida(){
-	if(typeof jDev == "object"){
-		bayeux.getClient().publish('/messages', jDev);
+function bienvenida(socket){
+	if(typeof jDev.status == "object"){
+		socket.volatile.emit('status', jDev.status);
 	} else {
-		setTimeout(function(){bienvenida(bayeux);}, 1000);
+		setTimeout(function(){bienvenida(socket);}, 1000);
 	}
 }
 c = 0;
-bayeux.bind('subscribe', function(clientId) {
-  	c++;
-  	console.log("Conectados: "+ c);
-	bienvenida();
-})
-bayeux.bind('unsubscribe', function(clientId) {
-  	c--;
-  	console.log("Conectados: "+ c);
-})
-bayeux.attach(server);
-server.listen(8000);
+function conectado(a){
+	console.log("Conectados: "+ c);
+	io.sockets.volatile.emit('stats', {conectados: c});
+}
