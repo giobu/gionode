@@ -1,6 +1,7 @@
 var io = require('socket.io').listen(3000), 
 request = require('request');
-io.set('log level', 2);  
+//Configuracion del socket.io
+io.set('log level', 2);
 //
 jDev = {status: "Nada"};
 function getJdev(){
@@ -22,6 +23,10 @@ io.sockets.on('connection', function (socket) {
     	c--;
     	conectado();
   	});
+  	socket.on('status', function(data){
+  		jDev.status = data;
+  		socket.broadcast.emit('status', data);
+  	})
 });
 
 function bienvenida(socket){
